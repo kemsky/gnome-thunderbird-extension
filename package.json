@@ -1,0 +1,34 @@
+{
+    "name": "thunderbird-tray",
+    "version": "1.0.0",
+    "description": "Thunderbird Tray",
+    "type": "module",
+    "license": "MIT",
+    "repository": {
+        "url": "https://github.com/kemsky/gnome-thunderbird-extension"
+    },
+    "readme": "README.md",
+    "scripts": {
+        "compile": "tsc && glib-compile-schemas schemas",
+        "build": "yarn compile && cp -r ./schemas ./dist/ && cp -r ./metadata.json ./dist/",
+        "package": "yarn build && gnome-extensions pack --force ./dist/ && zip -ur thunderbird-tray@kemsky.by.shell-extension.zip ./assets",
+        "extension-install": "yarn package && gnome-extensions install --force thunderbird-tray@kemsky.by.shell-extension.zip",
+        "extension-enable": "gnome-extensions enable thunderbird-tray@kemsky.by",
+        "extension-info": "gnome-extensions info thunderbird-tray@kemsky.by",
+        "extension-uninstall": "gnome-extensions uninstall thunderbird-tray@kemsky.by",
+        "extension-open": "nautilus $HOME/.local/share/gnome-shell/extensions/thunderbird-tray@kemsky.by"
+    },
+    "dependencies": {
+        "@girs/gjs": "4.0.0-rc.15",
+        "@girs/gnome-shell": "50.0.0",
+        "@tsconfig/strictest": "2.0.8",
+        "prettier": "3.8.3",
+        "typescript": "6.0.3",
+        "@eslint/js": "9.39.4",
+        "@typescript-eslint/eslint-plugin": "8.59.3",
+        "@typescript-eslint/parser": "8.59.3",
+        "eslint": "9.39.4",
+        "eslint-config-prettier": "10.1.8",
+        "typescript-eslint": "8.59.3"
+    }
+}

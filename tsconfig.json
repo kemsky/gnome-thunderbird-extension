@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+        "incremental": true,
+        "sourceMap": false,
+        "target": "ES2024",
+        "lib": ["ES2024"],
+        "experimentalDecorators": true,
+        "exactOptionalPropertyTypes": true,
+        "noFallthroughCasesInSwitch": false,
+        "types": []
+    },
+    "include": ["src", "src/types/**/*.d.ts"]
+}

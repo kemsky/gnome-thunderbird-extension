@@ -1,0 +1,11 @@
+.idea
+
+.claude
+
+dist
+
+node_modules
+
+gschemas.compiled
+
+thunderbird-tray@kemsky.by.shell-extension.zip

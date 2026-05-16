@@ -1,0 +1,10 @@
+{
+    "name": "Thunderbird Tray",
+    "description": "Minimizes Thunderbird to the system tray. Hides the dock icon when minimized. Click the tray icon to restore.",
+    "uuid": "thunderbird-tray@kemsky.by",
+    "settings-schema": "org.gnome.shell.extensions.thunderbird-tray",
+    "shell-version": ["45", "46", "47", "48", "49", "50"],
+    "session-modes": ["user"],
+    "version": 1,
+    "url": "https://github.com/kemsky/gnome-thunderbird-extension"
+}
