@@ -16,6 +16,8 @@ A GNOME Shell extension that adds a Thunderbird system tray icon to the top pane
 Extension patches `Shell.AppSystem.running_apps` and `Shell.App.get_windows` to hide app and its notifications from Dock.
 Also, it monitors notifications to detect when Thunderbird receives a new email.
 
+If you know a better way to do this please let me know.
+
 ## Requirements
 
 - GNOME Shell 45–50
