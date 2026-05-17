@@ -6,7 +6,7 @@ import St from 'gi://St';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const isThunderbirdApp = (app: Shell.App) => {
     const id = app.get_id();
@@ -51,6 +51,10 @@ const APP_IDS = [
     'mozilla-thunderbird.desktop'
 ];
 
+type ThunderbirdTraySettings = {
+    'hide-when-not-running': boolean;
+};
+
 class ThunderbirdTrayInstance {
     private readonly settings: Gio.Settings;
 
@@ -70,16 +74,17 @@ class ThunderbirdTrayInstance {
     private readonly systemStray: PanelMenu.Button;
     private readonly systemStrayIcon: St.Icon;
     private readonly appStateSubscription: number;
+    private readonly settingsSubscription: number;
 
     private readonly gioIcon: Gio.Icon;
     private readonly gioIconBadge: Gio.Icon;
 
-    private get hideIconWhenAppNotRunning(): boolean {
-        return this.settings.get_boolean('hide-when-not-running') ?? false;
-    }
+    private hideIconWhenAppNotRunning: boolean = false;
 
     constructor(private extension: Extension) {
         this.settings = extension.getSettings();
+
+        this.hideIconWhenAppNotRunning = this.get_boolean(this.settings, 'hide-when-not-running');
 
         this.appSystem = Shell.AppSystem.get_default();
         this.windowTracker = Shell.WindowTracker.get_default();
@@ -97,6 +102,7 @@ class ThunderbirdTrayInstance {
             opacity: OPACITY_INACTIVE
         });
         this.systemStray.add_child(this.systemStrayIcon);
+        this.systemStray.visible = !this.hideIconWhenAppNotRunning;
         this.systemStray.connect('button-press-event', this.onClick.bind(this));
         Main.panel.addToStatusArea(this.extension.uuid, this.systemStray);
 
@@ -106,12 +112,30 @@ class ThunderbirdTrayInstance {
 
         this.appStateSubscription = this.appSystem.connect('app-state-changed', this.onAppStateChanged.bind(this));
 
+        this.settingsSubscription = this.settings.connect('changed', (source, key: keyof ThunderbirdTraySettings) => {
+            switch (key) {
+                case 'hide-when-not-running': {
+                    this.hideIconWhenAppNotRunning = this.get_boolean(source, key);
+
+                    this.systemStray.visible = this.hideIconWhenAppNotRunning ? this.thunderbirdApp != null : true;
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        });
+
         this.checkThunderbirdRunning();
     }
 
     public destroy(): void {
         if (this.appStateSubscription) {
             this.appSystem.disconnect(this.appStateSubscription);
+        }
+
+        if (this.settingsSubscription) {
+            this.settings.disconnect(this.settingsSubscription);
         }
 
         this.disconnectWindowCreated();
@@ -127,6 +151,10 @@ class ThunderbirdTrayInstance {
         this.stopNotificationMonitoring();
 
         this.systemStray.destroy();
+    }
+
+    private get_boolean(settings: Gio.Settings, key: keyof ThunderbirdTraySettings): boolean {
+        return settings.get_boolean(key) ?? false;
     }
 
     private onClick(): void {
@@ -236,6 +264,7 @@ class ThunderbirdTrayInstance {
 
         if (this.systemStrayIcon) {
             this.systemStrayIcon.opacity = OPACITY_ACTIVE;
+            this.systemStray.visible = true;
         }
 
         for (const window of app.get_windows()) {
@@ -290,6 +319,7 @@ class ThunderbirdTrayInstance {
         if (this.systemStrayIcon) {
             this.systemStrayIcon.opacity = OPACITY_INACTIVE;
             this.systemStrayIcon.gicon = this.gioIcon;
+            this.systemStray.visible = !this.hideIconWhenAppNotRunning;
         }
     }
 
