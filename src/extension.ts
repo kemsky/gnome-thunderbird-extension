@@ -2,10 +2,8 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
-import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -21,8 +19,10 @@ const isThunderbirdAppSource = (source: MessageTray.Source) => {
     if (app && isThunderbirdApp(app)) {
         return true;
     }
-    // Fallback: match by title string for older GNOME versions
+
+    // try match by title string
     const title = source.title ?? '';
+
     return title.toLowerCase().includes('thunderbird');
 };
 
@@ -39,7 +39,7 @@ export default class ThunderbirdTrayExtension extends Extension {
     }
 }
 
-const OPACITY_INACTIVE = 128;
+const OPACITY_INACTIVE = 120;
 const OPACITY_ACTIVE = 255;
 
 const TAG = 'thunderbird-tray';
@@ -54,17 +54,14 @@ const APP_IDS = [
 class ThunderbirdTrayInstance {
     private readonly settings: Gio.Settings;
 
-    private settingsAnimate: boolean;
-
     private hiddenFromDock = false;
 
     private thunderbirdApp?: Shell.App | undefined;
 
     private windowCreatedSubscription?: number | undefined;
     private notificationSourceSubscription?: number | undefined;
-    private windowSubscription = new Map<Meta.Window, number>();
-    private messageTraySourceSubscriptions = new Map<MessageTray.Source, number>();
-    private hasUnread: boolean = false;
+    private readonly windowSubscription = new Map<Meta.Window, number>();
+    private readonly messageTraySourceSubscriptions = new Map<MessageTray.Source, number>();
 
     private readonly appSystem: Shell.AppSystem;
 
@@ -76,9 +73,12 @@ class ThunderbirdTrayInstance {
     private readonly gioIcon: Gio.Icon;
     private readonly gioIconBadge: Gio.Icon;
 
+    private get hideIconWhenAppNotRunning(): boolean {
+        return this.settings.get_boolean('hide-when-not-running') ?? false;
+    }
+
     constructor(private extension: Extension) {
         this.settings = extension.getSettings();
-        this.settingsAnimate = this.settings.get_boolean('animate') ?? true;
 
         this.appSystem = Shell.AppSystem.get_default();
         this.windowTracker = Shell.WindowTracker.get_default();
@@ -115,7 +115,6 @@ class ThunderbirdTrayInstance {
 
         this.disconnectWindowCreated();
 
-        // Restore dock state before unloading so nothing stays hidden
         if (this.hiddenFromDock) {
             this.showInDock();
         }
@@ -128,14 +127,14 @@ class ThunderbirdTrayInstance {
     }
 
     private onClick(): void {
-        this.setUnreadState(false);
+        this.updateTrayIcon(false);
 
         if (!this.thunderbirdApp || this.thunderbirdApp.get_state() !== Shell.AppState.RUNNING) {
             this.launchThunderbird();
             return;
         }
 
-        const windows = this.realGetWindows(this.thunderbirdApp);
+        const windows = this.getAppWindows(this.thunderbirdApp);
 
         if (!windows.length) {
             this.launchThunderbird();
@@ -151,9 +150,7 @@ class ThunderbirdTrayInstance {
         windows[0].activate(global.get_current_time());
     }
 
-    private setUnreadState(hasUnread: boolean): void {
-        this.hasUnread = hasUnread;
-
+    private updateTrayIcon(hasUnread: boolean): void {
         if (hasUnread) {
             this.systemStrayIcon.gicon = this.gioIconBadge;
         } else {
@@ -200,7 +197,7 @@ class ThunderbirdTrayInstance {
         }
 
         const subscription = source.connect('notification-added', (_source, _notif) => {
-            this.setUnreadState(true);
+            this.updateTrayIcon(true);
         });
 
         this.messageTraySourceSubscriptions.set(source, subscription);
@@ -239,16 +236,15 @@ class ThunderbirdTrayInstance {
         }
 
         for (const window of app.get_windows()) {
-            this.watchWindow(window);
+            this.watchWindowMinimized(window);
         }
 
         this.windowCreatedSubscription = global.display.connect('window-created', (_display, window) => {
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                 const wa = this.windowTracker.get_window_app(window);
                 if (wa && isThunderbirdApp(wa)) {
-                    this.watchWindow(window);
+                    this.watchWindowMinimized(window);
 
-                    // A new window appearing means Thunderbird is active
                     if (this.hiddenFromDock) {
                         this.showInDock();
                     }
@@ -258,6 +254,22 @@ class ThunderbirdTrayInstance {
         });
     }
 
+    private watchWindowMinimized(window: Meta.Window): void {
+        if (this.windowSubscription.has(window)) {
+            return;
+        }
+
+        const subscription = window.connect('notify::minimized', () => {
+            if (window.minimized) {
+                this.onWindowMinimized();
+            } else if (this.hiddenFromDock) {
+                this.showInDock();
+            }
+        });
+
+        this.windowSubscription.set(window, subscription);
+    }
+
     private onThunderbirdStopped(): void {
         this.disconnectWindowCreated();
         this.disconnectWindowSignals();
@@ -265,7 +277,7 @@ class ThunderbirdTrayInstance {
         this.hiddenFromDock = false;
 
         if (this.thunderbirdApp) {
-            this.restoreAppGetWindows(this.thunderbirdApp);
+            this.unpatchAppGetWindows(this.thunderbirdApp);
         }
 
         this.thunderbirdApp = undefined;
@@ -281,22 +293,6 @@ class ThunderbirdTrayInstance {
             global.display.disconnect(this.windowCreatedSubscription);
             this.windowCreatedSubscription = undefined;
         }
-    }
-
-    private watchWindow(window: Meta.Window): void {
-        if (this.windowSubscription.has(window)) {
-            return;
-        }
-
-        const subscription = window.connect('notify::minimized', () => {
-            if (window.minimized) {
-                this.onWindowMinimized();
-            } else if (this.hiddenFromDock) {
-                this.showInDock();
-            }
-        });
-
-        this.windowSubscription.set(window, subscription);
     }
 
     private disconnectWindowSignals(): void {
@@ -317,7 +313,7 @@ class ThunderbirdTrayInstance {
         }
 
         // Read the real window list (before any own-property patch)
-        const windows = this.realGetWindows(this.thunderbirdApp);
+        const windows = this.getAppWindows(this.thunderbirdApp);
 
         if (windows.length > 0 && windows.every((w) => w.minimized)) {
             this.hideFromDock();
@@ -349,17 +345,16 @@ class ThunderbirdTrayInstance {
         this.hiddenFromDock = false;
 
         if (this.thunderbirdApp) {
-            this.restoreAppGetWindows(this.thunderbirdApp);
+            this.unpatchAppGetWindows(this.thunderbirdApp);
         }
 
         this.emitDockRefresh();
     }
 
-    // Returns the real window list regardless of any own-property override
-    private realGetWindows(app: Shell.App): Meta.Window[] {
+    private getAppWindows(app: Shell.App): Meta.Window[] {
         const patched = Object.prototype.hasOwnProperty.call(app, 'get_windows');
         if (patched) {
-            // @ts-expect-error none of your business
+            // @ts-expect-error just do it
             delete app.get_windows;
         }
         const list = app.get_windows();
@@ -369,9 +364,9 @@ class ThunderbirdTrayInstance {
         return list;
     }
 
-    private restoreAppGetWindows(app: Shell.App): void {
+    private unpatchAppGetWindows(app: Shell.App): void {
         if (Object.prototype.hasOwnProperty.call(app, 'get_windows')) {
-            // @ts-expect-error none of your business
+            // @ts-expect-error just do it
             delete app.get_windows;
         }
     }
@@ -419,11 +414,11 @@ class ThunderbirdTrayInstance {
     }
 
     private patchAppSystem(): void {
-        const original = this.appSystem.get_running.bind(this.appSystem);
+        const get_running = this.appSystem.get_running.bind(this.appSystem);
 
         // that's how it is removed from the Dock:
         this.appSystem.get_running = () => {
-            const apps = original();
+            const apps = get_running();
             if (this.hiddenFromDock && this.thunderbirdApp) {
                 return apps.filter((a) => a !== this.thunderbirdApp);
             }
@@ -433,7 +428,7 @@ class ThunderbirdTrayInstance {
 
     private unpatchAppSystem(): void {
         // restore original method
-        // @ts-expect-error none of your business
+        // @ts-expect-error just do it
         delete this.appSystem.get_running;
     }
 }

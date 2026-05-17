@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.thunderbird-tray" path="/org/gnome/shell/extensions/thunderbird-tray/">
-    <key name="padding-inner" type="i">
-      <default>8</default>
-      <summary>Inner padding</summary>
-      <description>Padding between windows</description>
-    </key>
-    <key name="animate" type="b">
-      <default>true</default>
-      <summary>Animation</summary>
-      <description>Whether to animate window movement/resizing</description>
+    <key name="hide-when-not-running" type="b">
+      <default>false</default>
+      <summary>Hide tray icon when Thunderbird is not running</summary>
     </key>
   </schema>
 </schemalist>
