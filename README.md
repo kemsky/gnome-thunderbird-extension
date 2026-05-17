@@ -45,7 +45,7 @@ Log out and back in for the extension to fully load.
 
 > **Note:** GNOME Shell caches JavaScript modules in memory. Code changes only take full effect after a session logout/login.
 
-Optionally you can install `gnome-extensions-app` to manage extension preferences (https://apps.gnome.org/Extensions/):
+Install `gnome-extensions-app` to manage extension preferences (https://apps.gnome.org/Extensions/):
 
 ```bash
 sudo apt-get install gnome-extensions-app
