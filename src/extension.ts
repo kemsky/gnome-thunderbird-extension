@@ -3,10 +3,11 @@ import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const isThunderbirdApp = (app: Shell.App) => {
     const id = app.get_id();
@@ -157,7 +158,7 @@ class ThunderbirdTrayInstance {
         return settings.get_boolean(key) ?? false;
     }
 
-    private onClick(): void {
+    private onClick(widget: St.Widget, event: Clutter.Event): void {
         this.updateTrayIcon(false);
 
         if (!this.thunderbirdApp || this.thunderbirdApp.get_state() !== Shell.AppState.RUNNING) {
