@@ -38,7 +38,7 @@ yarn extension-enable
 or
 ```bash
 yarn extension-install
-extension-extensions enable thunderbird-tray@kemsky.by
+gnome-extensions enable thunderbird-tray@kemsky.by
 ```
 
 Log out and back in for the extension to fully load.
@@ -58,7 +58,7 @@ yarn extension-uninstall
 ```
 or
 ```bash
-extension-extensions uninstall thunderbird-tray@kemsky.by
+gnome-extensions uninstall thunderbird-tray@kemsky.by
 ```
 
 ## License
