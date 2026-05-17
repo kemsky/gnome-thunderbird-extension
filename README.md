@@ -1,4 +1,4 @@
-# Thunderbird Tray
+# Gnome shell extension for Thunderbird
 
 A GNOME Shell extension that adds a Thunderbird system tray icon to the top panel.
 
