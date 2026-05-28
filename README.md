@@ -2,6 +2,8 @@
 
 A GNOME Shell extension that adds a Thunderbird system tray icon to the top panel.
 
+![system_tray](/docs/images/system_tray.png)
+
 Download extension from [Releases](https://github.com/kemsky/gnome-thunderbird-extension/releases/) page.
 
 ## Features
