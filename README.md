@@ -25,7 +25,7 @@ sudo apt-get install gnome-extensions-app
 
 ## Requirements
 
-- GNOME Shell 45–50
+- GNOME Shell 45–50 (Ubuntu 24.04 LTS and later)
 - Thunderbird (package, snap, or Flatpak)
 
 ## How it works
